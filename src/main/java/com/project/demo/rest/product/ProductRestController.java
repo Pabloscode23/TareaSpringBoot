@@ -1,12 +1,9 @@
 package com.project.demo.rest.product;
 import com.project.demo.logic.entity.category.Category;
 import com.project.demo.logic.entity.category.CategoryRepository;
-import com.project.demo.logic.entity.http.GlobalResponseHandler;
 import com.project.demo.logic.entity.product.Product;
 import com.project.demo.logic.entity.product.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,6 +15,8 @@ import java.util.Optional;
 public class ProductRestController {
     @Autowired
     private ProductRepository productRepository;
+
+    @Autowired
     private CategoryRepository categoryRepository;
 
     @GetMapping
@@ -29,13 +28,21 @@ public class ProductRestController {
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN_ROLE')")
     public Product updateProduct(@PathVariable Long id, @RequestBody Product product) {
+        Optional<Category> optionalCategory = categoryRepository.findById(product.getCategory().getId());
+
+        if (optionalCategory.isEmpty()) {
+            throw new RuntimeException("Category not found with id: " + product.getCategory().getId());
+        }
+
+        Category category = optionalCategory.get();
+
         return productRepository.findById(id)
                 .map(existingProduct -> {
                     existingProduct.setName(product.getName());
                     existingProduct.setDescription(product.getDescription());
                     existingProduct.setPrice(product.getPrice());
                     existingProduct.setStockQuantity(product.getStockQuantity());
-                    existingProduct.setCategory(product.getCategory());
+                    existingProduct.setCategory(category);
                     return productRepository.save(existingProduct);
                 })
                 .orElseGet(() -> {
@@ -50,6 +57,7 @@ public class ProductRestController {
      if (optionalCategory.isEmpty()) {
             throw new RuntimeException("Category not found with id: " + product.getCategory().getId());
      }
+        product.setCategory(optionalCategory.get());
         return productRepository.save(product);
     }
 
